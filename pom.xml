@@ -23,7 +23,7 @@
 	</build>
 	<modules>
 		<module>Model</module>
-		<module>Skeleton</module>
+		<module>Player-API</module>
 	</modules>
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
