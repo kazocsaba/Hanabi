@@ -15,7 +15,7 @@
 	<dependencies>
 		<dependency>
 			<groupId>hu.kazocsaba.hanabi</groupId>
-			<artifactId>Hanabi-Model</artifactId>
+			<artifactId>Model</artifactId>
 			<version>1.0-SNAPSHOT</version>
 		</dependency>
 	</dependencies>
