@@ -1,57 +1,114 @@
 package hu.kazocsaba.hanabi.player.api;
 
+import hu.kazocsaba.hanabi.model.Card;
 import hu.kazocsaba.hanabi.model.Player;
 import hu.kazocsaba.hanabi.model.Rank;
 import hu.kazocsaba.hanabi.model.Suit;
 import hu.kazocsaba.hanabi.model.UnknownCard;
+import java.util.List;
+import java.util.Objects;
 
 /**
- * The interface a player can use to communicate. Calling those functions that correspond to game
- * actions only expresses intent, the player must not assume that any of her actions are performed
- * until she receives the appropriate callback to {@link SelfActionFeedback}.
+ * The superclass of the actions a player can take.
  *
  * @author Kazó Csaba
  */
-public interface Action {
-
+public abstract class Action {
+	private Action() {}
+	
 	/**
-	 * This player has received and processed a feedback. This function should be called in response
-	 * to every callback received through the interfaces
-	 * {@link GameFeedback}, {@link SelfActionFeedback}, and {@link OtherPlayerActionFeedback}.
+	 * The action of giving a hint to another player. The hint reveals the exact set of cards in
+	 * the target player's hand that have a certain rank or suit.
 	 */
-	public void acknowledged();
+	public static class GiveHint extends Action {
+		private final Player target;
+		private final Rank rank;
+		private final Suit suit;
 
-	/**
-	 * This player intends to give a hint to another player.
-	 *
-	 * The target player will learn which of her cards have the given rank.
-	 *
-	 * @param target the player receiving the hint
-	 * @param rank the rank that is revealed
-	 */
-	public void giveHint(Player target, Rank rank);
+		private GiveHint(Player target, Rank rank, Suit suit) {
+			this.target = target;
+			this.rank = rank;
+			this.suit = suit;
+		}
+		public static GiveHint create(Player target, Rank rank) {
+			return new GiveHint(Objects.requireNonNull(target), Objects.requireNonNull(rank), null);
+		}
+		public static GiveHint create(Player target, Suit suit) {
+			return new GiveHint(Objects.requireNonNull(target), null, Objects.requireNonNull(suit));
+		}
 
-	/**
-	 * This player intends to give a hint to another player.
-	 *
-	 * The target player will learn which of her cards have the given suit.
-	 *
-	 * @param target the player receiving the hint
-	 * @param suit the suit that is revealed
-	 */
-	public void giveHint(Player target, Suit suit);
+		public Rank getRank() {
+			return rank;
+		}
 
-	/**
-	 * This player intends to discard one of her cards.
-	 *
-	 * @param card the card to discard
-	 */
-	public void discard(UnknownCard card);
+		public Suit getSuit() {
+			return suit;
+		}
 
+		public Player getTarget() {
+			return target;
+		}
+		
+		public boolean matches(Card card) {
+			return rank != null ? rank == card.getRank() : suit == card.getSuit();
+		}
+		
+		public void provideFeedback(SelfActionFeedback feedback) {
+			if (rank == null)
+				feedback.givesHint(target, suit);
+			else
+				feedback.givesHint(target, rank);
+		}
+
+		public void provideFeedback(OtherPlayerActionFeedback feedback, List<UnknownCard> hintedCards) {
+			if (rank == null)
+				feedback.givesHintToMe(hintedCards, suit);
+			else
+				feedback.givesHintToMe(hintedCards, rank);
+		}
+		public void provideFeedback(OtherPlayerActionFeedback feedback) {
+			if (rank == null)
+				feedback.givesHintToOther(target, suit);
+			else
+				feedback.givesHintToOther(target, rank);
+		}
+	}
 	/**
-	 * This player intends to play one of her cards.
-	 *
-	 * @param card the card to play
+	 * The action of discarding a card.
 	 */
-	public void play(UnknownCard card);
+	public static class Discard extends Action {
+		private final UnknownCard card;
+
+		private Discard(UnknownCard card) {
+			this.card = card;
+		}
+		
+		public static Discard create(UnknownCard card) {
+			return new Discard(Objects.requireNonNull(card));
+		}
+
+		public UnknownCard getCard() {
+			return card;
+		}
+		
+	}
+	/**
+	 * The action of playing a card.
+	 */
+	public static class Play extends Action {
+		private final Card card;
+
+		private Play(Card card) {
+			this.card = card;
+		}
+		
+		public static Play create(Card card) {
+			return new Play(Objects.requireNonNull(card));
+		}
+
+		public Card getCard() {
+			return card;
+		}
+		
+	}
 }

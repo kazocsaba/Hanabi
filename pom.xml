@@ -24,6 +24,7 @@
 	<modules>
 		<module>Model</module>
 		<module>Player-API</module>
+		<module>GameMaster</module>
 	</modules>
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

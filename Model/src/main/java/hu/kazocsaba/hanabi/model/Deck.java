@@ -40,23 +40,24 @@ public final class Deck {
 	}
 
 	/**
-	 * Creates a traditional, randomly shuffled deck.
+	 * Creates a traditional, randomly shuffled deck. All the cards will have different IDs.
 	 *
 	 * @return a deck containing, for each of the five suits, three instances of 1, two instances of
 	 * 2, 3, and 4, and one instance of 5 cards, for a total of 50 cards, in random order
 	 */
 	public static Deck createRandom() {
 		List<Card> cards = new ArrayList<>(3 * 5 + 3 * 2 * 5 + 5);
+		int id = 0;
 		for (Suit suit : Suit.values()) {
 			for (int i = 0; i < 3; i++) {
-				cards.add(new Card(suit, Rank.ONE));
+				cards.add(new Card(suit, Rank.ONE, id++));
 			}
 			for (int i = 0; i < 2; i++) {
-				cards.add(new Card(suit, Rank.TWO));
-				cards.add(new Card(suit, Rank.THREE));
-				cards.add(new Card(suit, Rank.FOUR));
+				cards.add(new Card(suit, Rank.TWO, id++));
+				cards.add(new Card(suit, Rank.THREE, id++));
+				cards.add(new Card(suit, Rank.FOUR, id++));
 			}
-			cards.add(new Card(suit, Rank.FIVE));
+			cards.add(new Card(suit, Rank.FIVE, id++));
 		}
 		Collections.shuffle(cards);
 		return new Deck(cards);
