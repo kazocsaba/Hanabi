@@ -1,17 +1,15 @@
 package hu.kazocsaba.hanabi.gm.internal;
 
-import com.google.common.base.Function;
 import hu.kazocsaba.hanabi.gm.GameState;
 import hu.kazocsaba.hanabi.gm.PlayerAction;
 import hu.kazocsaba.hanabi.gm.PlayerCandidate;
+import hu.kazocsaba.hanabi.model.Board;
 import hu.kazocsaba.hanabi.model.Card;
 import hu.kazocsaba.hanabi.model.Deck;
 import hu.kazocsaba.hanabi.model.Player;
-import hu.kazocsaba.hanabi.model.Suit;
 import hu.kazocsaba.hanabi.model.UnknownCard;
 import hu.kazocsaba.hanabi.player.api.Action;
 import hu.kazocsaba.hanabi.player.api.Feedback;
-import hu.kazocsaba.hanabi.player.api.SelfActionFeedback;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -63,6 +61,7 @@ public class InternalGameMaster {
 	private Deck deck;
 	private Map<Player, List<Card>> hands = new HashMap<>();
 	private int hintsAvailable;
+	private Board board;
 
 	public void requestJoin(PlayerCandidate candidate) {
 		try {
@@ -126,6 +125,8 @@ public class InternalGameMaster {
 		public void run() {
 			if (playerAction.getAction() instanceof Action.GiveHint) {
 				giveHint(playerAction.getPlayer(), (Action.GiveHint)playerAction.getAction());
+			} else if (playerAction.getAction() instanceof Action.Discard) {
+				discard(playerAction.getPlayer(), (Action.Discard)playerAction.getAction());
 			} else {
 				throw new AssertionError("Unknown action: "+playerAction.getAction().getClass().getName());
 			}
@@ -152,17 +153,12 @@ public class InternalGameMaster {
 			for (int cardIndex = 0; cardIndex < 4; cardIndex++) {
 				Card card = deck.draw();
 				hands.get(player).add(card);
-				
-				for (Player playerToNotify: players) {
-					if (player == playerToNotify)
-						playerFeedbacks.get(playerToNotify).getSelfActionFeedback().draws(card.asUnknown());
-					else
-						playerFeedbacks.get(playerToNotify).getOtherPlayerActionFeedback().draws(card);
-				}
+				notifyDraws(player, card);
 			}
 		}
 		currentPlayer = 0;
 		hintsAvailable = MAX_HINTS;
+		board = new Board();
 		state = GameState.INGAME;
 		for (Player playerToNotify: players)
 			playerFeedbacks.get(playerToNotify).getGameFeedback().gameStarts(new ArrayList<>(players));
@@ -172,7 +168,22 @@ public class InternalGameMaster {
 		for (Feedback feedback: playerFeedbacks.values())
 			feedback.getGameFeedback().turnStarts(players.get(currentPlayer));
 	}
-	
+	private void notifyDraws(Player player, Card card) {
+		for (Player playerToNotify: players) {
+			if (player == playerToNotify)
+				playerFeedbacks.get(playerToNotify).getSelfActionFeedback().draws(card.asUnknown());
+			else
+				playerFeedbacks.get(playerToNotify).getOtherPlayerActionFeedback().draws(card);
+		}
+	}
+	private void notifyDiscards(Player player, Card card) {
+		for (Player playerToNotify: players) {
+			if (player == playerToNotify)
+				playerFeedbacks.get(playerToNotify).getSelfActionFeedback().discards(card.asUnknown(), card);
+			else
+				playerFeedbacks.get(playerToNotify).getOtherPlayerActionFeedback().discards(card);
+		}
+	}
 	private void giveHint(Player player, Action.GiveHint giveHint) {
 		if (state != GameState.INGAME) {
 			return;
@@ -200,6 +211,39 @@ public class InternalGameMaster {
 				giveHint.provideFeedback(playerFeedbacks.get(playerToNotify).getOtherPlayerActionFeedback());
 			}
 		hintsAvailable--;
+		// TODO: end of game
+		currentPlayer = (currentPlayer + 1) % players.size();
+		notifyTurnStarts();
+	}
+	
+	private void discard(Player player, Action.Discard action) {
+		if (state != GameState.INGAME) {
+			return;
+		}
+		if (player != players.get(currentPlayer)) {
+			return;
+		}
+		List<Card> playerHand = hands.get(player);
+		int cardIndex = -1;
+		for (int i=0; i<playerHand.size(); i++) {
+			if (playerHand.get(i).getId() == action.getCard().getId()) {
+				cardIndex = i;
+				break;
+			}
+		}
+		if (cardIndex == -1) {
+			return;
+		}
+		Card discardedCard = playerHand.remove(cardIndex);
+		notifyDiscards(player, discardedCard);
+		hintsAvailable = Math.min(hintsAvailable + 1, MAX_HINTS);
+		if (!deck.isEmpty()) {
+			Card card = deck.draw();
+			playerHand.add(card);
+			notifyDraws(player, card);
+		} else {
+			// TODO: end of game
+		}
 		currentPlayer = (currentPlayer + 1) % players.size();
 		notifyTurnStarts();
 	}
